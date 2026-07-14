@@ -1,4 +1,5 @@
-#app.py
+
+ #app.py
 import os
 import base64
 from datetime import datetime
@@ -64,6 +65,9 @@ except ImportError:
     MAP_LIBS_AVAILABLE = False
 
 OMAN_CENTER = (21.4735, 55.9754)
+ 
+# الحدود التقريبية لكامل سلطنة عُمان [[جنوب، غرب], [شمال، شرق]] — تُستخدم لعرض الدولة بأكملها عبر fit_bounds
+OMAN_BOUNDS = [[16.5, 51.8], [26.5, 60.0]]
 
 # إحداثيات تقريبية لولايات سلطنة عُمان — عدّل المفاتيح لمطابقة تهجئة "Wilayah" في بياناتك بدقة إن اختلفت
 WILAYAH_COORDS = {
@@ -303,18 +307,35 @@ def render_offline_locator(selected_wilayah: str):
 
 @st.cache_resource(show_spinner=False)
 def build_oman_map(selected_wilayah: str):
-    """يبني خريطة Folium تفاعلية تُركّز وتُبرز الولاية المختارة."""
+    """يبني خريطة Folium تعرض سلطنة عُمان بالكامل، مع تمييز الولاية المختارة بدبوس واضح.
+
+    ملاحظتان مهمتان مقارنة بالنسخة السابقة:
+    1) بدل الاعتماد على zoom_start ثابت (وهو تخمين قد لا يناسب كل أحجام الحاويات)، نستخدم
+       fmap.fit_bounds(OMAN_BOUNDS) الذي يحسب مستوى التكبير المناسب تلقائيًا بحيث تظهر عُمان
+       بأكملها دائمًا، بصرف النظر عن عرض/ارتفاع الحاوية في الصفحة.
+    2) استُبدل `folium.Circle` (نصف قطره بالأمتار) بـ `folium.CircleMarker` (نصف قطره بالبكسل).
+       عند تصغير الخريطة لعرض الدولة كاملة، أي دائرة بمقياس الأمتار (كانت 18 كم) تتقلص بصريًا حتى
+       تختفي تقريبًا؛ أما CircleMarker فيحافظ على حجمه المرئي بالبكسل مهما كان مستوى التكبير.
+    """
     center = WILAYAH_COORDS.get(selected_wilayah, OMAN_CENTER)
-    zoom = 10 if selected_wilayah in WILAYAH_COORDS else 6
-    fmap = folium.Map(location=center, zoom_start=zoom, tiles="CartoDB positron", control_scale=True)
-    folium.Circle(
-        location=center, radius=18000, color="#15803d", weight=2,
-        fill=True, fill_color="#15803d", fill_opacity=0.18,
+
+    fmap = folium.Map(location=OMAN_CENTER, zoom_start=6, tiles="CartoDB positron", control_scale=True)
+    fmap.fit_bounds(OMAN_BOUNDS)
+
+    # هالة بحجم ثابت بالبكسل حول الولاية المختارة — تبقى واضحة حتى مع ظهور الدولة كاملة
+    folium.CircleMarker(
+        location=center, radius=14, color="#e5493f", weight=2,
+        fill=True, fill_color="#e5493f", fill_opacity=0.18,
     ).add_to(fmap)
+
+    # دبوس مميز وواضح فوق الهالة، بلون مختلف (أحمر) ليبرز بوضوح على خلفية الخريطة الخضراء
     folium.Marker(
-        location=center, tooltip=selected_wilayah, popup=f"الولاية: {selected_wilayah}",
-        icon=folium.Icon(color="green", icon="leaf", prefix="fa"),
+        location=center,
+        tooltip=f"📍 {selected_wilayah}",
+        popup=folium.Popup(f"<b>الولاية المختارة:</b> {selected_wilayah}", max_width=220),
+        icon=folium.Icon(color="red", icon="map-marker", prefix="fa"),
     ).add_to(fmap)
+
     return fmap
 
 
@@ -550,3 +571,4 @@ NPK: N={N}, P={P}, K={K}
 
         st.download_button("📥 تحميل التقرير الشامل (.txt)", data=report_txt,
                             file_name=f"Oman_Agriculture_Report_{wilayah}.txt", mime="text/plain")
+ 
