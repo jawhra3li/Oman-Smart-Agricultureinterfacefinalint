@@ -1,4 +1,4 @@
- #app.py
+#app.py
 import os
 import base64
 from datetime import datetime
@@ -269,7 +269,7 @@ def indicator_metric_card(icon, label, value, unit, key):
         st.metric(label=f"{icon} {label}", value=f"{value:g} {unit}".strip())
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_resource(show_spinner=False)
 def build_oman_map(selected_wilayah: str):
     """يبني خريطة Folium تفاعلية تُركّز وتُبرز الولاية المختارة."""
     center = WILAYAH_COORDS.get(selected_wilayah, OMAN_CENTER)
@@ -342,7 +342,7 @@ with col_env:
         if MAP_LIBS_AVAILABLE:
             with st.container(key="map_panel"):
                 oman_map = build_oman_map(wilayah)
-                st_folium(oman_map, height=260, use_container_width=True, returned_objects=[])
+                st_folium(oman_map, height=260, use_container_width=True, returned_objects=[], key=f"oman_map_{wilayah}")
         else:
             st.info("💡 لتفعيل الخريطة التفاعلية، ثبّت المكتبتين: `pip install folium streamlit-folium`.")
 
