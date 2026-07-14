@@ -269,6 +269,38 @@ def indicator_metric_card(icon, label, value, unit, key):
         st.metric(label=f"{icon} {label}", value=f"{value:g} {unit}".strip())
 
 
+def render_offline_locator(selected_wilayah: str):
+    """يعرض مؤشر موقع بسيط بالكامل عبر CSS/HTML — بدون أي اتصال إنترنت أو مكتبات خارجية.
+    مضمون الظهور دائمًا، على عكس خريطة Leaflet التفاعلية التي تحتاج تحميل ملفات من CDN."""
+    lat, lon = WILAYAH_COORDS.get(selected_wilayah, OMAN_CENTER)
+    lats = [c[0] for c in WILAYAH_COORDS.values()]
+    lons = [c[1] for c in WILAYAH_COORDS.values()]
+    lat_min, lat_max = min(lats) - 0.4, max(lats) + 0.4
+    lon_min, lon_max = min(lons) - 0.4, max(lons) + 0.4
+    x_pct = max(3, min(97, (lon - lon_min) / (lon_max - lon_min) * 100))
+    y_pct = max(3, min(97, (lat_max - lat) / (lat_max - lat_min) * 100))
+
+    st.markdown(f"""
+        <div style="position:relative; width:100%; height:220px; border-radius:14px; overflow:hidden;
+                    background: linear-gradient(160deg, #d7ecd9 0%, #bfe0c6 55%, #a9d9b8 100%);
+                    border:1px solid #cfe6d3;">
+            <div style="position:absolute; inset:0;
+                        background-image: linear-gradient(#ffffff40 1px, transparent 1px),
+                                           linear-gradient(90deg, #ffffff40 1px, transparent 1px);
+                        background-size: 12% 16%;"></div>
+            <div style="position:absolute; left:{x_pct:.1f}%; top:{y_pct:.1f}%; transform:translate(-50%,-100%);
+                        display:flex; flex-direction:column; align-items:center;">
+                <div style="font-size:26px; line-height:1; filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));">📍</div>
+                <div style="background:#0f172a; color:white; font-size:11px; font-weight:700; padding:3px 8px;
+                            border-radius:6px; margin-top:2px; white-space:nowrap;">{selected_wilayah}</div>
+            </div>
+        </div>
+        <div style="font-size:11px; color:#6b7d74; text-align:center; margin-top:6px;">
+            📌 إحداثيات تقريبية: {lat:.3f}°N, {lon:.3f}°E — خريطة مصغّرة توضيحية (لا تتطلب اتصال إنترنت)
+        </div>
+    """, unsafe_allow_html=True)
+
+
 @st.cache_resource(show_spinner=False)
 def build_oman_map(selected_wilayah: str):
     """يبني خريطة Folium تفاعلية تُركّز وتُبرز الولاية المختارة."""
@@ -337,14 +369,22 @@ with col_env:
         season_display = st.radio("🌤️ اختر الفصل الزراعي", options=["فصل الشتاء", "فصل الصيف"], index=0, horizontal=True)
         season_eng = "Winter" if season_display == "فصل الشتاء" else "Summer"
 
-        # ---------------- خريطة عُمان التفاعلية — تُركّز تلقائيًا على الولاية المختارة ----------------
+        # ---------------- الموقع الجغرافي للولاية المختارة ----------------
         st.markdown("##### 🗺️ الموقع الجغرافي للولاية المختارة")
-        if MAP_LIBS_AVAILABLE:
-            with st.container(key="map_panel"):
-                oman_map = build_oman_map(wilayah)
-                st_folium(oman_map, height=260, use_container_width=True, returned_objects=[], key=f"oman_map_{wilayah}")
-        else:
-            st.info("💡 لتفعيل الخريطة التفاعلية، ثبّت المكتبتين: `pip install folium streamlit-folium`.")
+        with st.container(key="map_panel"):
+            # مؤشر موقع ثابت يعمل دائمًا بدون إنترنت — هذا ما يظهر افتراضيًا
+            render_offline_locator(wilayah)
+
+            if MAP_LIBS_AVAILABLE:
+                show_interactive_map = st.checkbox(
+                    "🌐 تفعيل الخريطة التفاعلية (Leaflet) — تتطلب اتصال إنترنت فعّال بـ cdn.jsdelivr.net",
+                    value=False, key="toggle_interactive_map",
+                )
+                if show_interactive_map:
+                    oman_map = build_oman_map(wilayah)
+                    st_folium(oman_map, height=260, use_container_width=True, returned_objects=[], key=f"oman_map_{wilayah}")
+            else:
+                st.caption("💡 لتفعيل الخريطة التفاعلية لاحقًا، ثبّت: `pip install folium streamlit-folium`.")
 
         st.markdown("##### 🧪 مستويات تراكيز مغذيات التربة (NPK)")
         N = styled_slider("النيتروجين (N) — ppm", min_value=0, max_value=150, value=90, key="sl_N")
