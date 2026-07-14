@@ -1,4 +1,3 @@
-
  #app.py
 import os
 import base64
@@ -65,7 +64,7 @@ except ImportError:
     MAP_LIBS_AVAILABLE = False
 
 OMAN_CENTER = (21.4735, 55.9754)
- 
+
 # الحدود التقريبية لكامل سلطنة عُمان [[جنوب، غرب], [شمال، شرق]] — تُستخدم لعرض الدولة بأكملها عبر fit_bounds
 OMAN_BOUNDS = [[16.5, 51.8], [26.5, 60.0]]
 
@@ -571,4 +570,3 @@ NPK: N={N}, P={P}, K={K}
 
         st.download_button("📥 تحميل التقرير الشامل (.txt)", data=report_txt,
                             file_name=f"Oman_Agriculture_Report_{wilayah}.txt", mime="text/plain")
- 
